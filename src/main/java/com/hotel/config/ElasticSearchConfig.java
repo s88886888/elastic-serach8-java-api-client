@@ -20,7 +20,7 @@ public class ElasticSearchConfig {
     public ElasticsearchClient elasticsearchClient() {
         RestClient client = RestClient.builder(new HttpHost("192.168.1.19", 9200, "http")).build();
         ElasticsearchTransport transport = new RestClientTransport(client, new JacksonJsonpMapper());
-        System.err.println(transport + "elasticSearch注入成功");
+        System.err.println("elasticSearch注入成功");
         return new ElasticsearchClient(transport);
     }
 }

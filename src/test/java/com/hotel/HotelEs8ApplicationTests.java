@@ -54,19 +54,6 @@ class HotelEs8ApplicationTests {
 // And create the API client
         ElasticsearchClient esClient = new ElasticsearchClient(transport);
 
-        esClient.indices().create(c -> c
-                .index("hotel")
-        );
-
-        Hotel hotel = new Hotel();
-
-        IndexResponse response = esClient.index(i -> i
-                .index("hotel")
-                .id(hotel.getName())
-                .document(hotel)
-        );
-
-        System.err.println("Indexed with version " + response.version());
     }
 
 

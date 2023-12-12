@@ -4,11 +4,15 @@ package com.hotel.controller;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
 import co.elastic.clients.elasticsearch.core.search.TotalHitsRelation;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
+import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import co.elastic.clients.transport.endpoints.BooleanResponse;
 import com.hotel.pojo.Hotel;
 import com.hotel.pojo.RestfulPage;
 import com.hotel.service.IHotelService;
@@ -40,10 +44,10 @@ public class HotelController {
 
 
     /////////////////////////////////////////更多具体实现，看测试用例test文件夹 ==》HotelEs8ApplicationTests //////////////////////////////////////////
-    //分页查询 根据name使用分词器进行分词
+    //分页查询 根据name使用分词器进行分词 page一定是从0开始
     @GetMapping("/list")
     public RestfulPage getList(@RequestParam String key, @RequestParam Integer page, @RequestParam Integer size) throws IOException {
-        System.err.println(page + "" + size + "" + key);
+        System.err.println("页数 " + page + "返回结果数量" + size + "搜索值： " + key);
         RestfulPage restfulPage = new RestfulPage();
         SearchResponse<Hotel> response = client.search(s -> s
                         .index("hotel")  // 设置要搜索的索引名称为 "hotel"
@@ -56,7 +60,7 @@ public class HotelController {
                                 )
                         )
                         .sort(x -> x.field(z -> z.field("id").order(SortOrder.Desc)))  // 设置排序规则，按 id 顺序排序。重点：分页不设置排序，会出现数据重复
-                        .from(page * size)  // 设置结果集的起始位置，从第 0 条开始
+                        .from(page * size)  // 设置结果集的起始位置，从第 0 条开始返回，【不是】从第几页开始返回
                         .size(size)  // 设置每页返回的结果数量为 10 条
                         .highlight(x -> x
                                 .preTags("<font color='red'>")
@@ -80,9 +84,7 @@ public class HotelController {
                 System.err.println("There are more than " + total.value() + " results");
             }
         }
-
 //        System.err.println(response.hits().hits());
-
         List<Hit<Hotel>> hits = response.hits().hits();
         for (Hit<Hotel> hit : hits) {
             Hotel hotel = hit.source();
@@ -100,42 +102,65 @@ public class HotelController {
 
     //1.创建索引,设置映射，数据结构，搜索方式，设置集群、索引或节点的行为和属性
     @GetMapping("/addIndex")
-    public void createIndex() throws IOException {
+    public void createIndex() {
 
         try {
-            File file = new File("C:\\Users\\Administrator\\Desktop\\hotel\\hotel-es8\\src\\main\\resources\\templates\\hotel.json");
+            // 读取模板文件
+            File file = new File("C:\\Users\\Administrator\\Desktop\\hotel-es8\\src\\main\\resources\\templates\\hotel.json");
             InputStream inputStream = new FileInputStream(file);
             //写法比RestHighLevelClient更加简洁
-            CreateIndexResponse indexResponse = client.indices()
-                    .create(c -> c.index("hotel").withJson(inputStream));
-            System.err.println(indexResponse.acknowledged());
+            BooleanResponse isExists = client.indices().exists(
+                    new ExistsRequest.Builder()
+                            .index("hotel")
+                            .build()
+            );
+            if (!isExists.value()) {
+                CreateIndexResponse indexResponse = client.indices()
+                        .create(c -> c.index("hotel").withJson(inputStream));
+                System.err.println(indexResponse.acknowledged());
+            }
+
         } catch (IOException e) {
             // 处理文件读取或创建索引时的异常
             e.printStackTrace();
         }
-
-
     }
 
 
     //2.为对应的索引填充数据 批量插入数据
     @GetMapping("/add")
-    public RestfulPage addList() {
-
+    public RestfulPage addList() throws IOException {
         RestfulPage restfulPage = new RestfulPage();
-        BulkRequest.Builder br = new BulkRequest.Builder();
-        //遍历添加到bulk中
-        for (Hotel hotel : hotelService.list()) {
-            br.operations(op -> op
-                    .index(idx -> idx
-                            .index("hotel")
-                            .id(hotel.getId().toString())
-                            .document(hotel)
-                    )
-            );
+        BooleanResponse isExists = client.indices().exists(
+                new ExistsRequest.Builder()
+                        .index("hotel")
+                        .build()
+        );
 
+        if (isExists.value()) {
+            BulkRequest.Builder br = new BulkRequest.Builder();
+            //遍历添加到bulk中
+            for (Hotel hotel : hotelService.list()) {
+                br.operations(op -> op
+                        .index(idx -> idx
+                                .index("hotel")
+                                .id(hotel.getId().toString())
+                                .document(hotel)
+                        )
+                );
+
+            }
+            BulkResponse result = client.bulk(br.build());
+
+            if (result.errors()) {
+                System.err.println("Bulk had errors");
+                for (BulkResponseItem item : result.items()) {
+                    if (item.error() != null) {
+                        System.err.println(item.error().reason());
+                    }
+                }
+            }
         }
-        //BulkResponse result = client.bulk(br.build());
         restfulPage.setHotels(hotelService.list());
         return restfulPage;
 

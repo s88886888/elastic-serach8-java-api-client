@@ -29,20 +29,17 @@
       "city": {
         "type": "keyword"
       },
-      "star_name": {
+      "starName": {
         "type": "keyword"
       },
       "business": {
-        "type": "text"
-      },
-      "latitude": {
         "type": "keyword"
       },
-      "longitude": {
-        "type": "keyword"
+      "location": {
+        "type": "geo_point"
       },
       "pic": {
-        "type": "keyword"
+        "type": "text"
       }
     }
   }

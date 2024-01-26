@@ -1,0 +1,22 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: es8Service
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.19:8848
+        namespace: 9d7ffbf0-81a7-417f-a779-fa3f61fc4219
+        cluster-name: HZ
+      config:
+        server-addr: 192.168.1.19:8848
+        namespace: 9d7ffbf0-81a7-417f-a779-fa3f61fc4219
+        file-extension: yaml
+
+userService:
+  ribbon:
+    NFLoadBalancerRuleClassName: com.alibaba.cloud.nacos.ribbon.NacosRule

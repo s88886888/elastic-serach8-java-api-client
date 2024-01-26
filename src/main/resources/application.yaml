@@ -1,18 +1,18 @@
-server:
-  port: 8089
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/hoteldb?useSSL=false&serverTimezone=UTC
-    username: root
-    password: 123456
-    driver-class-name: com.mysql.cj.jdbc.Driver
-logging:
-  level:
-    com.hotel: debug
-  pattern:
-    dateformat: MM-dd HH:mm:ss:SSS
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
-  type-aliases-package: com.hotel.pojo
+#server:
+#  port: 8089
+#spring:
+#  datasource:
+#    url: jdbc:mysql://localhost:3306/hoteldb?useSSL=false&serverTimezone=UTC
+#    username: root
+#    password: 123456
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#logging:
+#  level:
+#    com.hotel: debug
+#  pattern:
+#    dateformat: MM-dd HH:mm:ss:SSS
+#mybatis-plus:
+#  configuration:
+#    map-underscore-to-camel-case: true
+#  type-aliases-package: com.hotel.pojo
 

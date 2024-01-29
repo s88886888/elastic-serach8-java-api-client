@@ -1,0 +1,46 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
+      "address": {
+        "type": "text"
+      },
+      "price": {
+        "type": "integer"
+      },
+      "score": {
+        "type": "integer"
+      },
+      "brand": {
+        "type": "keyword"
+      },
+      "city": {
+        "type": "keyword"
+      },
+      "starName": {
+        "type": "keyword"
+      },
+      "business": {
+        "type": "keyword"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "pic": {
+        "type": "text"
+      }
+    }
+  }
+}

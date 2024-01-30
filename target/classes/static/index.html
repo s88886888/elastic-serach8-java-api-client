@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>黑马旅游</title>
+    <title>旅游</title>
 
     <link
       rel="stylesheet"
@@ -19,8 +19,7 @@
           <div class="logo">
             <img src="./img/heima.png" alt="1" />
             <span>
-              <div class="logo-ch">黑马旅游</div>
-              <div class="logo-en">www.itheima.com</div>
+              <div class="logo-ch">旅游</div>
             </span>
           </div>
           <div>
@@ -219,7 +218,7 @@
 
     <script>
       // 设置后台服务地址
-      axios.defaults.baseURL = "http://localhost:8089";
+      axios.defaults.baseURL = "http://localhost:10100/es";
       axios.defaults.timeout = 3000;
 
       let app = new Vue({
@@ -425,15 +424,26 @@
               let max = parseInt(pArr[1]);
               params.maxPrice = max === 0 ? 999999 : max;
             }
-            axios
-              .post("/hotel/filters", params)
-              .then((resp) => {
-                this.filterList = resp.data;
-              })
-              .catch((err) => {
-                console.log(err);
-                this.filterList = this.testFilterData;
-              });
+
+            this.filterList = this.testFilterData;
+            // axios
+            //   .post(
+            //     "/hotel/list?page=" +
+            //       this.params.page +
+            //       "&size=" +
+            //       this.params.size +
+            //       "&key=" +
+            //       this.params.key +
+            //       "&sortBy=" +
+            //       this.params.sortBy
+            //   )
+            //   .then((resp) => {
+            //     this.filterList = resp.data;
+            //   })
+            //   .catch((err) => {
+            //     console.log(err);
+            //     this.filterList = this.testFilterData;
+            //   });
           },
           searchByMap(location) {
             // 准备参数
@@ -461,15 +471,15 @@
             axios
               .get(
                 "/hotel/list?page=" +
-                  params.page +
+                  this.params.page +
                   "&size=" +
-                  params.size +
+                  this.params.size +
                   "&key=" +
-                  params.key +
+                  this.params.key +
                   "&sortBy=" +
-                  params.sortBy +
+                  this.params.sortBy +
                   "&location=" +
-                  location
+                  this.loc
               )
               .then((resp) => {
                 this.hotels = resp.data.hotels;

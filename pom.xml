@@ -26,6 +26,13 @@
         </dependency>
 
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
+
+
         <!-- Nacos 发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

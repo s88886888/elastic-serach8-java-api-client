@@ -2,6 +2,9 @@ package com.spingcould.es8.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.GeoDistanceQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -24,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -47,8 +49,53 @@ public class HotelController {
     private ElasticsearchClient client;
 
 
-
     /////////////////////////////////////////更多具体实现，看测试用例test文件夹 ==》HotelEs8ApplicationTests //////////////////////////////////////////
+    /////////////////////////////////////////        条件不写死，嵌套查询请看list方法  //////////////////////////////////////////
+    /**
+     * 分页排序查询
+     */
+    @GetMapping("/getListAll")
+    public RestfulPage getList(@RequestParam Integer page, @RequestParam Integer size, @RequestParam(required = false, value = "sortBy") String sort) throws IOException {
+        RestfulPage restfulPage = new RestfulPage();
+        page = Math.max(page - 1, 0);
+        if (StringUtils.isNullOrEmpty(sort)) {
+            sort = "id";
+        }
+        Integer finalPage = page;
+        String finalSort = sort;
+        SearchResponse<HotelDoc> response = client.search(s -> s
+                        .index("hotel")  // 设置要搜索的索引名称为 "hotel"
+                        //去除query 则是查询全部
+                        .query(q -> q.matchAll(x -> x)
+
+                        )
+                        .sort(x -> x.field(z -> z.field(finalSort).order(SortOrder.Desc)))
+                        .from(finalPage * size)
+                        .size(size)
+                , HotelDoc.class
+        );
+
+        TotalHits total = response.hits().total();
+        if (total != null) {
+            restfulPage.setTotal(total.value());
+        }
+
+        List<Hit<HotelDoc>> hits = response.hits().hits();
+        List<HotelDoc> list = new ArrayList<>();
+        for (Hit<HotelDoc> hit : hits) {
+            HotelDoc hotel = hit.source();
+            System.err.println(hit.highlight().get("name"));
+
+            if (hotel != null) {
+                System.err.println("Found  " + hotel.getName());
+            }
+            list.add(hotel);
+        }
+        restfulPage.setHotels(list);
+        return restfulPage;
+    }
+
+
     //分页查询 根据name使用分词器进行分词 page
     @GetMapping("/list1")
     public RestfulPage getList(@RequestParam String key, @RequestParam Integer page, @RequestParam Integer size, @RequestParam(required = false, value = "sortBy") String sort) throws IOException {
@@ -110,7 +157,7 @@ public class HotelController {
 
 
     //分页查询  根据name使用分词器进行分词 地理位置查询
-    @GetMapping("/list")
+    @GetMapping("/list2")
     public RestfulPage getList(@RequestParam String key, @RequestParam Integer page, @RequestParam Integer size, @RequestParam(required = false, value = "sortBy") String sort, @RequestParam(required = false, value = "location") String location) throws IOException {
 
 
@@ -121,12 +168,11 @@ public class HotelController {
         }
         System.err.println(location);
         if (StringUtils.isNullOrEmpty(location) || "undefined".equals(location)) {
-            location = "31.1,121.1";
+            return new RestfulPage();
         }
 
         String finalSort = sort;
         Integer finalPage = page;
-        String finalLocation = location;
         SearchResponse<HotelDoc> response = client.search(s -> s
                         .index("hotel")  // 设置要搜索的索引名称为 "hotel"
                         //去除query 则是查询全部
@@ -136,8 +182,8 @@ public class HotelController {
                                                                 .analyzer("ik_max_word")  // 设置分词器要和索引库中的"name" 字段的分词器保持一致。"ik_smart","ik_max_word"
                                                 )
                                         ).filter(l -> l.geoDistance(x -> x.field("location").distance("30km")
-                                                .location(r -> r.latlon(k -> k.lat(Double.parseDouble(finalLocation.split(",")[0]))
-                                                        .lon(Double.parseDouble(finalLocation.split(",")[1]))))
+                                                .location(r -> r.latlon(k -> k.lat(Double.parseDouble(location.split(",")[0]))
+                                                        .lon(Double.parseDouble(location.split(",")[1]))))
                                         ))
                                 )
                         )
@@ -150,6 +196,7 @@ public class HotelController {
                                 .fields("name", z -> z)) // 高亮显示匹配的字段 "name"，并设置前缀和后缀
                 , HotelDoc.class  // 指定返回结果的数据类型为 Hotel 类
         );
+
         TotalHits total = response.hits().total();
         if (total != null) {
             restfulPage.setTotal(total.value());
@@ -168,6 +215,7 @@ public class HotelController {
         }
         System.err.println(response);
         List<Hit<HotelDoc>> hits = response.hits().hits();
+        List<HotelDoc> list = new ArrayList<>();
         for (Hit<HotelDoc> hit : hits) {
             HotelDoc hotel = hit.source();
             System.err.println(hit.highlight().get("name"));
@@ -176,14 +224,81 @@ public class HotelController {
                 String output = hit.highlight().get("name").toString().substring(1, hit.highlight().get("name").toString().length() - 1);
                 hotel.setName(output);
             }
-
             if (hotel != null) {
                 System.err.println("Found  " + hotel.getName());
             }
+            list.add(hotel);
         }
-        restfulPage.setHotels(null);
+        restfulPage.setHotels(list);
         return restfulPage;
 
+    }
+
+
+    /**
+     * 使用查询把条件整合到一个查询中
+     */
+
+    @GetMapping("/list")
+    public RestfulPage getList(@RequestParam(required = false, value = "key") String key,
+                               @RequestParam(required = false, value = "location") String location,
+                               @RequestParam(required = false, defaultValue = "0", value = "page") Integer page,
+                               @RequestParam(required = false, defaultValue = "5", value = "size") Integer size,
+                               @RequestParam(required = false, defaultValue = "id", value = "sortBy") String sort) throws IOException {
+
+
+        List<Query> queryBuilders = new ArrayList<>();
+        if (!StringUtils.isNullOrEmpty(key)) {
+            Query queryKey = MatchQuery.of(m -> m
+                    .field("name")
+                    .query(key)
+            )._toQuery();
+            queryBuilders.add(queryKey);
+        }
+        if (!StringUtils.isNullOrEmpty(location)) {
+            Query queryLocation = GeoDistanceQuery.of(m -> m
+                    .field("location")
+                    .distance("30km")
+                    .location(r -> r.latlon(k -> k.lat(Double.parseDouble(location.split(",")[0]))
+                            .lon(Double.parseDouble(location.split(",")[1]))))
+            )._toQuery();
+            queryBuilders.add(queryLocation);
+        }
+
+        page = Math.max(page - 1, 0);
+        Integer finalPage = page;
+        SearchResponse<HotelDoc> response = client.search(s -> s
+                        .index("hotel")
+                        .query(q -> q.bool(b -> b.must(queryBuilders)))
+                        .sort(x -> x.field(z -> z.field(sort).order(SortOrder.Desc)))
+                        .from(finalPage * size)
+                        .size(size)
+                        .highlight(x -> x
+                                .preTags("<font color='red'>")
+                                .postTags("</font>")
+                                .fields("name", z -> z)),
+                HotelDoc.class);
+
+        List<Hit<HotelDoc>> hits = response.hits().hits();
+        List<HotelDoc> list = new ArrayList<>();
+        for (Hit<HotelDoc> hit : hits) {
+            HotelDoc hotel = hit.source();
+            if (hotel != null) {
+                if (!hit.highlight().isEmpty())
+                {
+                    String output = hit.highlight().get("name").toString().substring(1, hit.highlight().get("name").toString().length() - 1);
+                    hotel.setName(output);
+                }
+                list.add(hotel);
+            }
+        }
+        RestfulPage restfulPage = new RestfulPage();
+        TotalHits total = response.hits().total();
+        if (total != null) {
+            restfulPage.setTotal(total.value());
+        }
+        restfulPage.setHotels(list);
+        return restfulPage;
     }
 
 
@@ -191,6 +306,8 @@ public class HotelController {
     @GetMapping("/addIndex")
     public void createIndex() {
 
+
+        ///8.9 官方文档
         try {
             // 读取模板文件
             File file = new File("C:\\Users\\Administrator\\Desktop\\spring-colud-demo\\es8Service\\src\\main\\resources\\templates\\hotel.json");

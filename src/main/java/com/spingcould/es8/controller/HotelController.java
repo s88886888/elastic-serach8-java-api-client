@@ -51,6 +51,7 @@ public class HotelController {
 
     /////////////////////////////////////////更多具体实现，看测试用例test文件夹 ==》HotelEs8ApplicationTests //////////////////////////////////////////
     /////////////////////////////////////////        条件不写死，嵌套查询请看list方法  //////////////////////////////////////////
+
     /**
      * 分页排序查询
      */
@@ -284,8 +285,7 @@ public class HotelController {
         for (Hit<HotelDoc> hit : hits) {
             HotelDoc hotel = hit.source();
             if (hotel != null) {
-                if (!hit.highlight().isEmpty())
-                {
+                if (!hit.highlight().isEmpty()) {
                     String output = hit.highlight().get("name").toString().substring(1, hit.highlight().get("name").toString().length() - 1);
                     hotel.setName(output);
                 }
@@ -299,6 +299,39 @@ public class HotelController {
         }
         restfulPage.setHotels(list);
         return restfulPage;
+    }
+
+
+    /**
+     *
+     * 过滤器，过滤搜索中的关键词
+     * GET /hotel/_search
+     * {
+     * "size": 0,
+     * "aggs": {
+     * "cities": {
+     * "terms": {
+     * "field": "city"
+     * }
+     * },
+     * "brands": {
+     * "terms": {
+     * "field": "brand"
+     * }
+     * },
+     * "starNames": {
+     * "terms": {
+     * "field": "starName"
+     * }
+     * }
+     * }
+     * }
+     */
+    @GetMapping("/ftilerList")
+    public RestfulPage ftilerList() {
+
+        return new RestfulPage();
+
     }
 
 
